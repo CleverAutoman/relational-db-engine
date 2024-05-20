@@ -9,8 +9,10 @@ import edu.berkeley.cs186.database.databox.DataBox;
 import edu.berkeley.cs186.database.databox.Type;
 import edu.berkeley.cs186.database.io.DiskSpaceManager;
 import edu.berkeley.cs186.database.memory.BufferManager;
+import edu.berkeley.cs186.database.memory.Page;
 import edu.berkeley.cs186.database.table.RecordId;
 
+import javax.xml.crypto.Data;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -146,6 +148,16 @@ public class BPlusTree {
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
 
         // TODO(proj2): implement
+        LeafNode leafNode = root.get(key);
+        if (leafNode.equals(null)) return Optional.ofNullable(null);
+
+        List<DataBox> dbList = leafNode.getKeys();
+        List<RecordId> ridsList = leafNode.getRids();
+        for (int i = 0; i < dbList.size(); i++) {
+            if (key.equals(dbList.get(i))) {
+                return Optional.ofNullable(ridsList.get(i));
+            }
+        }
 
         return Optional.empty();
     }

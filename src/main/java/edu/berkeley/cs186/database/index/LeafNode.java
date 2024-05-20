@@ -9,6 +9,7 @@ import edu.berkeley.cs186.database.memory.BufferManager;
 import edu.berkeley.cs186.database.memory.Page;
 import edu.berkeley.cs186.database.table.RecordId;
 
+import javax.xml.crypto.Data;
 import java.nio.ByteBuffer;
 import java.util.*;
 
@@ -147,7 +148,13 @@ class LeafNode extends BPlusNode {
     @Override
     public LeafNode get(DataBox key) {
         // TODO(proj2): implement
+        int tempKey = key.getInt();
 
+        for (int i = 0; i < keys.size(); i++) {
+            if (key.equals(keys.get(i))) {
+                return this;
+            }
+        }
         return null;
     }
 
@@ -155,8 +162,7 @@ class LeafNode extends BPlusNode {
     @Override
     public LeafNode getLeftmostLeaf() {
         // TODO(proj2): implement
-
-        return null;
+        return this;
     }
 
     // See BPlusNode.put.
@@ -377,7 +383,49 @@ class LeafNode extends BPlusNode {
         // use the constructor that reuses an existing page instead of fetching a
         // brand new one.
 
-        return null;
+        // // All sizes are in bytes.
+        //        int isLeafSize = 1;
+        //        int siblingSize = Long.BYTES;
+        //        int lenSize = Integer.BYTES;
+        //        int keySize = metadata.getKeySchema().getSizeInBytes();
+        //        int ridSize = RecordId.getSizeInBytes();
+        //        int entriesSize = (keySize + ridSize) * keys.size();
+        //        int size = isLeafSize + siblingSize + lenSize + entriesSize;
+        //
+        //        ByteBuffer buf = ByteBuffer.allocate(size);
+        //        buf.put((byte) 1);
+        //        buf.putLong(rightSibling.orElse(-1L));
+        //        buf.putInt(keys.size());
+        //        for (int i = 0; i < keys.size(); ++i) {
+        //            buf.put(keys.get(i).toBytes());
+        //            buf.put(rids.get(i).toBytes());
+        //        }
+        Page page = bufferManager.fetchPage(treeContext, pageNum);
+        Buffer buf = page.getBuffer();
+
+        byte nodeType = buf.get();
+        assert(nodeType == (byte) 1);
+
+        long tempSize = buf.getLong();
+        long rightSiblingTemp = tempSize == -1L? null: tempSize;
+
+        int keySize = buf.getInt();
+
+        List<RecordId> rids = new ArrayList<>();
+        List<DataBox> keys = new ArrayList<>();
+
+        for (int i = 0; i < keySize; i++) {
+            keys.add(DataBox.fromBytes(buf, metadata.getKeySchema()));
+            rids.add(RecordId.fromBytes(buf));
+        }
+
+        Optional<Long> rightSibling = Optional.ofNullable(rightSiblingTemp);
+
+
+        //   private LeafNode(BPlusTreeMetadata metadata, BufferManager bufferManager, Page page,
+        //                     List<DataBox> keys,
+        //                     List<RecordId> rids, Optional<Long> rightSibling, LockContext treeContext)
+        return new LeafNode(metadata, bufferManager, page, keys, rids, rightSibling, treeContext);
     }
 
     // Builtins ////////////////////////////////////////////////////////////////
