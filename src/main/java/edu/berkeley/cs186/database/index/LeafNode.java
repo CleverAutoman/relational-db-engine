@@ -4,6 +4,7 @@ import edu.berkeley.cs186.database.common.Buffer;
 import edu.berkeley.cs186.database.common.Pair;
 import edu.berkeley.cs186.database.concurrency.LockContext;
 import edu.berkeley.cs186.database.databox.DataBox;
+import edu.berkeley.cs186.database.databox.IntDataBox;
 import edu.berkeley.cs186.database.databox.Type;
 import edu.berkeley.cs186.database.memory.BufferManager;
 import edu.berkeley.cs186.database.memory.Page;
@@ -169,8 +170,49 @@ class LeafNode extends BPlusNode {
     @Override
     public Optional<Pair<DataBox, Long>> put(DataBox key, RecordId rid) {
         // TODO(proj2): implement
+        if (keys.contains(key)) throw new BPlusTreeException("Duplicated Key not Allowed");
 
-        return Optional.empty();
+        int order = metadata.getOrder();
+        if (keys.size() < order * 2)
+            return Optional.empty();
+        else{
+            Map<DataBox, RecordId> map = new HashMap<>();
+            for (int i = 0; i < keys.size(); i++) {
+                map.put(keys.get(i), rids.get(i));
+            }
+            map.put(key, rid);
+            Map<DataBox, RecordId> sortedmap = new TreeMap<>((a, b) -> Integer.compare(a.getInt(), b.getInt()));
+            sortedmap.putAll(map);
+
+            Optional<Long> newLeafRightSibling = this.rightSibling;
+            List<DataBox> newLeafKeys = new ArrayList<>();
+            List<RecordId> newLeafRids = new ArrayList<>();
+
+            keys.clear(); rids.clear();
+
+            int index = 0;
+            DataBox splitKey = key;
+            for (Map.Entry<DataBox, RecordId> entry: sortedmap.entrySet()) {
+                if (index == order + 1) {
+                    splitKey = entry.getKey();
+                }
+                if (index > order && index <= 2 * order) {
+                    newLeafKeys.add(entry.getKey());
+                    newLeafRids.add(entry.getValue());
+                } else {
+                    keys.add(entry.getKey());
+                    rids.add(entry.getValue());
+                }
+            }
+            LeafNode leafNode = new LeafNode(metadata, bufferManager, newLeafKeys, newLeafRids, newLeafRightSibling, treeContext);
+            long pageNum = leafNode.getPage().getPageNum();
+            this.rightSibling = Optional.of(pageNum);
+            leafNode.rightSibling = newLeafRightSibling;
+
+            sync();
+
+            return Optional.of(new Pair<DataBox, Long>(splitKey, pageNum));
+        }
     }
 
     // See BPlusNode.bulkLoad.
@@ -178,6 +220,7 @@ class LeafNode extends BPlusNode {
     public Optional<Pair<DataBox, Long>> bulkLoad(Iterator<Pair<DataBox, RecordId>> data,
             float fillFactor) {
         // TODO(proj2): implement
+
 
         return Optional.empty();
     }

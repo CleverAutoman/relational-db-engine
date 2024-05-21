@@ -9,8 +9,12 @@ import edu.berkeley.cs186.database.memory.BufferManager;
 import edu.berkeley.cs186.database.memory.Page;
 import edu.berkeley.cs186.database.table.RecordId;
 
+import javax.swing.*;
+import javax.swing.text.html.Option;
 import javax.xml.crypto.Data;
+import java.net.DatagramSocket;
 import java.nio.ByteBuffer;
+import java.sql.Array;
 import java.util.*;
 
 /**
@@ -110,8 +114,58 @@ class InnerNode extends BPlusNode {
     @Override
     public Optional<Pair<DataBox, Long>> put(DataBox key, RecordId rid) {
         // TODO(proj2): implement
+        Optional<Pair<DataBox, Long>> recursionResult = Optional.empty();
 
-        return Optional.empty();
+        for (int i = 0; i < keys.size(); i++){
+            if (key.getInt() < keys.get(i).getInt()) {
+                InnerNode innerNode = fromBytes(metadata, bufferManager, treeContext, children.get(i));
+                recursionResult = innerNode.put(key, rid);
+            }
+            if (i == keys.size() - 1 && key.getInt() >= keys.get(i).getInt()) {
+                InnerNode innerNode = fromBytes(metadata, bufferManager, treeContext, children.get(children.size() - 1));
+                recursionResult = innerNode.put(key, rid);
+            }
+        }
+
+        int order = metadata.getOrder();
+        if (keys.size() < order * 2 || recursionResult.isEmpty())
+            return Optional.empty();
+        else {
+            DataBox recursionKey = recursionResult.get().getFirst();
+            Long recursionPageNum = recursionResult.get().getSecond();
+            Map<DataBox, Long> map = new HashMap<>();
+            for (int i = 0; i < keys.size(); i++) {
+                map.put(keys.get(i), children.get(i));
+            }
+            map.put(recursionKey, recursionPageNum);
+            TreeMap<DataBox, Long> sortedMap = new TreeMap<>((a, b) -> Integer.compare(a.getInt(), b.getInt()));
+            sortedMap.putAll(map);
+
+            ArrayList<DataBox> newKeys = new ArrayList<>();
+            ArrayList<Long> newChildren = new ArrayList<>();
+            Long returnPage = null;
+            DataBox returnKey = null;
+
+            int index = 0;
+            keys.clear();
+            children.clear();
+            for (Map.Entry<DataBox, Long> entry: sortedMap.entrySet()) {
+                if (index < order) {
+                    keys.add(entry.getKey());
+                    children.add(entry.getValue());
+                } else if (index == order){
+                    returnKey = entry.getKey();
+                    returnPage = entry.getValue();
+                } else {
+                    newKeys.add(entry.getKey());
+                    newChildren.add(entry.getValue());
+                }
+                index++;
+            }
+            sync();
+
+            return Optional.of(new Pair<DataBox, Long>(returnKey, returnPage));
+        }
     }
 
     // See BPlusNode.bulkLoad.
