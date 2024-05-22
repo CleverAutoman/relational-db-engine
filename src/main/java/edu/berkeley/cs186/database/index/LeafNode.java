@@ -229,8 +229,20 @@ class LeafNode extends BPlusNode {
     @Override
     public void remove(DataBox key) {
         // TODO(proj2): implement
+        int tempKey = -1;
+        for (int i = 0; i  < keys.size(); i++) {
+            if (key == keys.get(i)) {
+                tempKey = i;
+                break;
+            }
+        }
+        if (tempKey == -1) throw new BPlusTreeException("No Such Key");
+        rids.remove(tempKey);
+        keys.remove(tempKey);
 
-        return;
+        Collections.sort(rids);
+        Collections.sort(keys);
+        sync();
     }
 
     // Iterators ///////////////////////////////////////////////////////////////

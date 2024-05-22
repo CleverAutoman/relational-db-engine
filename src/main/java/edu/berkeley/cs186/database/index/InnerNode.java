@@ -181,8 +181,17 @@ class InnerNode extends BPlusNode {
     @Override
     public void remove(DataBox key) {
         // TODO(proj2): implement
-
-        return;
+        long pageNum = -1L;
+        for (int i = 0; i < keys.size(); i++) {
+            if (key.getInt() < keys.get(i).getInt()) {
+                pageNum = children.get(i);
+                break;
+            }
+            if (i == keys.size() - 1 && pageNum == -1L) pageNum = children.get(children.size()) - 1;
+        }
+        InnerNode innerNode = fromBytes(metadata, bufferManager, treeContext, pageNum);
+        innerNode.remove(key);
+        sync();
     }
 
     // Helpers /////////////////////////////////////////////////////////////////
