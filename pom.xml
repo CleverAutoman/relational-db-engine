@@ -68,7 +68,7 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <configuration>
-                            <excludedGroups>edu.berkeley.cs186.database.categories.HiddenTests,edu.berkeley.cs186.database.categories.SystemTests,edu.berkeley.cs186.database.categories.StudentTests,edu.berkeley.cs186.database.categories.StudentTestRunner</excludedGroups>
+                            <excludedGroups>categories.database.HiddenTests,categories.database.SystemTests,categories.database.StudentTests,categories.database.StudentTestRunner</excludedGroups>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -82,7 +82,7 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <configuration>
-                            <excludedGroups>edu.berkeley.cs186.database.categories.PublicTests,edu.berkeley.cs186.database.categories.SystemTests,edu.berkeley.cs186.database.categories.StudentTests,edu.berkeley.cs186.database.categories.StudentTestRunner</excludedGroups>
+                            <excludedGroups>categories.database.PublicTests,categories.database.SystemTests,categories.database.StudentTests,categories.database.StudentTestRunner</excludedGroups>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -96,7 +96,7 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <configuration>
-                            <excludedGroups>edu.berkeley.cs186.database.categories.PublicTests,edu.berkeley.cs186.database.categories.HiddenTests,edu.berkeley.cs186.database.categories.SystemTests,edu.berkeley.cs186.database.categories.StudentTestRunner</excludedGroups>
+                            <excludedGroups>categories.database.PublicTests,categories.database.HiddenTests,categories.database.SystemTests,categories.database.StudentTestRunner</excludedGroups>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -110,7 +110,7 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <configuration>
-                            <excludedGroups>edu.berkeley.cs186.database.categories.PublicTests,edu.berkeley.cs186.database.categories.HiddenTests,edu.berkeley.cs186.database.categories.SystemTests,edu.berkeley.cs186.database.categories.StudentTests</excludedGroups>
+                            <excludedGroups>categories.database.PublicTests,categories.database.HiddenTests,categories.database.SystemTests,categories.database.StudentTests</excludedGroups>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -124,7 +124,7 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <configuration>
-                            <excludedGroups>edu.berkeley.cs186.database.categories.PublicTests,edu.berkeley.cs186.database.categories.HiddenTests,edu.berkeley.cs186.database.categories.StudentTests,edu.berkeley.cs186.database.categories.StudentTestRunner</excludedGroups>
+                            <excludedGroups>categories.database.PublicTests,categories.database.HiddenTests,categories.database.StudentTests,categories.database.StudentTestRunner</excludedGroups>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -138,7 +138,7 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <configuration>
-                            <excludedGroups>edu.berkeley.cs186.database.categories.SystemTests</excludedGroups>
+                            <excludedGroups>categories.database.SystemTests</excludedGroups>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -155,7 +155,7 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <configuration>
-                            <excludedGroups>edu.berkeley.cs186.database.categories.SystemTests,edu.berkeley.cs186.database.categories.PublicTests,edu.berkeley.cs186.database.categories.HiddenTests,edu.berkeley.cs186.database.categories.StudentTests,edu.berkeley.cs186.database.categories.StudentTestRunner</excludedGroups>
+                            <excludedGroups>categories.database.SystemTests,categories.database.PublicTests,categories.database.HiddenTests,categories.database.StudentTests,categories.database.StudentTestRunner</excludedGroups>
                         </configuration>
                     </plugin>
                 </plugins>

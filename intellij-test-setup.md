@@ -10,7 +10,7 @@ This document will help you set up IntelliJ for running an assignment's tests
    ![filled in menu](images/intellij-filledin-configuration.png)
    - Name: Proj2 tests (or whichever assignment you're setting up)
    - Test kind: Category
-   - Category: edu.berkeley.cs186.database.categories.Proj2Tests (or the category corresponding to the assignment you're setting up)
+   - Category: categories.database.Proj2Tests (or the category corresponding to the assignment you're setting up)
    - Search for tests: In whole project
 4. You should now see Project 2 tests in the dropdown in the top right. You can run/debug this configuration to run all the Project 2 tests.
 
