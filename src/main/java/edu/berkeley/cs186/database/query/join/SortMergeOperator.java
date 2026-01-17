@@ -6,12 +6,10 @@ import edu.berkeley.cs186.database.query.JoinOperator;
 import edu.berkeley.cs186.database.query.MaterializeOperator;
 import edu.berkeley.cs186.database.query.QueryOperator;
 import edu.berkeley.cs186.database.query.SortOperator;
+import edu.berkeley.cs186.database.query.disk.Run;
 import edu.berkeley.cs186.database.table.Record;
 
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-import java.util.NoSuchElementException;
+import java.util.*;
 
 public class SortMergeOperator extends JoinOperator {
     public SortMergeOperator(QueryOperator leftSource,
@@ -100,13 +98,19 @@ public class SortMergeOperator extends JoinOperator {
 
         private SortMergeIterator() {
             super();
+//            SortOperator operatorL = new SortOperator(getTransaction(), getLeftSource(), getLeftColumnName());
+//            SortOperator operatorR = new SortOperator(getTransaction(), getRightSource(), getRightColumnName());
+//
+//            operatorL.sort();
+//            operatorR.sort();
+
             leftIterator = getLeftSource().iterator();
             rightIterator = getRightSource().backtrackingIterator();
             rightIterator.markNext();
 
             if (leftIterator.hasNext() && rightIterator.hasNext()) {
                 leftRecord = leftIterator.next();
-                rightRecord = rightIterator.next();
+                rightRecord = null;
             }
 
             this.marked = false;
@@ -140,7 +144,49 @@ public class SortMergeOperator extends JoinOperator {
          */
         private Record fetchNextRecord() {
             // TODO(proj3_part1): implement
-            return null;
+            if (leftRecord == null) {
+                return null;  // The left source was empty, nothing to fetch
+            }
+
+            while (true) {
+                if (!rightIterator.hasNext()) {  // 如果右边没有更多记录
+                    if (!leftIterator.hasNext()) {
+                        return null;
+                    }
+                    leftRecord = leftIterator.next();
+                    rightIterator.reset();
+                    marked = false;
+                }
+
+                if (!marked) {
+                    rightIterator.markPrev();
+                    marked = true;
+                }
+
+                rightRecord = rightIterator.next();
+
+                if (compare(leftRecord, rightRecord) == 0) {
+                    nextRecord = leftRecord.concat(rightRecord);
+                    return nextRecord;
+                } else if (compare(leftRecord, rightRecord) < 0) {
+                    rightIterator.reset();
+                    if (!leftIterator.hasNext()) {
+                        return null;
+                    }
+                    leftRecord = leftIterator.next();
+                    marked = false;
+                } else {
+                    // 当右记录的值小于左记录时，重置右迭代器到标记位置，读取下一个左记录
+                    if (!rightIterator.hasNext()) {
+                        rightIterator.reset();
+                        if (!leftIterator.hasNext()) {
+                            return null;
+                        }
+                        leftRecord = leftIterator.next();
+                        marked = false;  // 取消标记
+                    }
+                }
+            }
         }
 
         @Override

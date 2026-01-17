@@ -64,4 +64,8 @@ public abstract class IndexBacktrackingIterator<T> implements BacktrackingIterat
         this.prevIndex = -1;
         this.nextIndex = this.markIndex;
     }
+
+    public void setPrevIndex() {
+        this.prevIndex = -1;
+    }
 }

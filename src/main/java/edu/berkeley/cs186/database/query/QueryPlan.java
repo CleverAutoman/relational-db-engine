@@ -3,12 +3,16 @@ package edu.berkeley.cs186.database.query;
 import edu.berkeley.cs186.database.TransactionContext;
 import edu.berkeley.cs186.database.common.PredicateOperator;
 import edu.berkeley.cs186.database.databox.DataBox;
+import edu.berkeley.cs186.database.databox.IntDataBox;
+import edu.berkeley.cs186.database.databox.Type;
 import edu.berkeley.cs186.database.query.expr.Expression;
 import edu.berkeley.cs186.database.query.join.BNLJOperator;
 import edu.berkeley.cs186.database.query.join.SNLJOperator;
 import edu.berkeley.cs186.database.table.Record;
 import edu.berkeley.cs186.database.table.Schema;
+import edu.berkeley.cs186.database.table.stats.TableStats;
 
+import javax.management.Query;
 import java.util.*;
 
 /**
@@ -575,9 +579,36 @@ public class QueryPlan {
      */
     public QueryOperator minCostSingleAccess(String table) {
         QueryOperator minOp = new SequentialScanOperator(this.transaction, table);
+        // calculate the estimated I/O cost of a sequential scan
+        int estimateSeqIO = minOp.estimateIOCost();
 
+        List<Integer> eligibleIndexColumns = getEligibleIndexColumns(table);
+        List<String> fieldNames = minOp.getSchema().getFieldNames();
+        int index = -1; int minIO = estimateSeqIO;
+//        System.out.println(operator.isSequentialScan());
+
+
+        for (int i: eligibleIndexColumns) {
+//            if (fieldNames.contains(selectPredicates.get(i).column)) { // Check if the column has an index
+                IndexScanOperator tempOperator = new IndexScanOperator(
+                        this.transaction, table, this.selectPredicates.get(i).column,
+                        this.selectPredicates.get(i).operator, this.selectPredicates.get(i).value);
+//                System.out.println(tempOperator.isSequentialScan());
+
+                int currentIOCost = tempOperator.estimateIOCost();
+
+                // Check if the new index scan is better
+                if (currentIOCost < minIO) {
+                    minIO = currentIOCost;
+                    minOp = tempOperator; // Update best operator
+                    index = i;
+                }
+            }
+//        }
+//        System.out.println(minOp.isSequentialScan());
+
+        return minOp.isSequentialScan()? addEligibleSelections(minOp, -1) : addEligibleSelections(minOp, index);
         // TODO(proj3_part2): implement
-        return minOp;
     }
 
     // Task 6: Join Selection //////////////////////////////////////////////////
@@ -624,9 +655,10 @@ public class QueryPlan {
      * @param pass1Map each set contains exactly one table maps to a single
      *                 table access (scan) query operator.
      * @return a mapping of table names to a join QueryOperator. The number of
-     * elements in each set of table names should be equal to the pass number.
+     * elements in each set of table names should be equal top the pass number.
      */
     public Map<Set<String>, QueryOperator> minCostJoins(
+            // {a, b} -> 局部最优op1
             Map<Set<String>, QueryOperator> prevMap,
             Map<Set<String>, QueryOperator> pass1Map) {
         Map<Set<String>, QueryOperator> result = new HashMap<>();
@@ -646,6 +678,43 @@ public class QueryPlan {
         //      calculate the cheapest join with the new table (the one you
         //      fetched an operator for from pass1Map) and the previously joined
         //      tables. Then, update the result map if needed.
+        for (Map.Entry<Set<String>, QueryOperator> entry : prevMap.entrySet()) {
+            Set<String> tables = entry.getKey();
+            QueryOperator operator = entry.getValue();
+
+            for (JoinPredicate predicate : this.joinPredicates) {
+                String leftTable = predicate.leftTable;
+                String rightTable = predicate.rightTable;
+                String leftColumn = predicate.leftColumn;
+                String rightColumn = predicate.rightColumn;
+
+                if (tables.contains(leftTable) && !tables.contains(rightTable)) {
+                    Set<String> set = new HashSet<>();
+                    set.add(rightTable);
+                    QueryOperator operatorR = pass1Map.get(set);
+                    if (operatorR == null) continue;
+                    QueryOperator minCostJoinTypeR = minCostJoinType(operator, operatorR, leftColumn, rightColumn);
+
+                    Set<String> updatedSetR = new HashSet<>(tables);
+                    updatedSetR.add(rightTable);
+                    result.put(updatedSetR, minCostJoinTypeR);
+
+                } else if(!tables.contains(leftTable) && tables.contains(rightTable)) {
+                    Set<String> set = new HashSet<>();
+                    set.add(leftTable);
+                    QueryOperator operatorL = pass1Map.get(set);
+                    if (operatorL == null) continue;
+                    QueryOperator minCostJoinTypeL = minCostJoinType(operatorL, operator, leftColumn, rightColumn);
+
+                    Set<String> updatedSetL = new HashSet<>(tables);
+                    updatedSetL.add(leftTable);
+                    result.put(updatedSetL, minCostJoinTypeL);
+                } else {
+                    continue;
+                }
+            }
+        }
+
         return result;
     }
 
@@ -695,7 +764,48 @@ public class QueryPlan {
         // Set the final operator to the lowest cost operator from the last
         // pass, add group by, project, sort and limit operators, and return an
         // iterator over the final operator.
-        return this.executeNaive(); // TODO(proj3_part2): Replace this!
+
+        // pass 1:
+        int l = this.tableNames.size();
+        Map<Set<String>, QueryOperator> tableOperatorHashMap = new HashMap<>();
+        for (String tableName : this.tableNames) {
+            Set<String> tempSet = new HashSet<>();
+            tempSet.add(tableName);
+            tableOperatorHashMap.put(tempSet, minCostSingleAccess(tableName));
+            System.out.println(tableOperatorHashMap.size());
+
+        }
+
+        // pass i:
+        Map<Set<String>, QueryOperator> pass1Map = new HashMap<>(tableOperatorHashMap);
+        while (l > 1) {
+            tableOperatorHashMap = minCostJoins(tableOperatorHashMap, pass1Map);
+            System.out.println(tableOperatorHashMap.size());
+            l--;
+        }
+
+        // find the lowest cost operator
+        int cost = Integer.MAX_VALUE;
+        QueryOperator finalOperator = null;
+        for (Set<String> set : tableOperatorHashMap.keySet()) {
+            QueryOperator operator = tableOperatorHashMap.get(set);
+            int estimateIOCost = operator.estimateIOCost();
+            if (estimateIOCost < cost) {
+                finalOperator = operator;
+                cost = estimateIOCost;
+            }
+        }
+        this.finalOperator = finalOperator;
+
+        // add joins, selects, group by's and projects to our plan
+//        this.addJoinsNaive();
+//        this.addSelectsNaive();
+        this.addGroupBy();
+        this.addProject();
+        this.addSort();
+        this.addLimit();
+
+        return this.finalOperator.iterator(); // TODO(proj3_part2): Replace this!
     }
 
     // EXECUTE NAIVE ///////////////////////////////////////////////////////////
@@ -707,7 +817,7 @@ public class QueryPlan {
      * Given a simple query over a single table without any joins, such as:
      *      SELECT * FROM table WHERE table.column >= 186;
      *
-     * We can take advantage of an index over table.column to perform a over
+     * We can take advantage of an index over table.column to perform an over
      * only values that meet the predicate. This function determines whether or
      * not there are any columns that we can perform this optimization with.
      *

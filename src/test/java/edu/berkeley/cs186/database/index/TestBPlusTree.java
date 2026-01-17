@@ -16,6 +16,7 @@ import edu.berkeley.cs186.database.io.MemoryDiskSpaceManager;
 import edu.berkeley.cs186.database.memory.BufferManager;
 import edu.berkeley.cs186.database.memory.ClockEvictionPolicy;
 import edu.berkeley.cs186.database.recovery.DummyRecoveryManager;
+import edu.berkeley.cs186.database.table.Record;
 import edu.berkeley.cs186.database.table.RecordId;
 import org.junit.After;
 import org.junit.Before;
@@ -408,6 +409,46 @@ public class TestBPlusTree {
 
     @Test
     @Category(PublicTests.class)
+    public void testPutAndScan() {
+        BPlusTree tree = getBPlusTree(Type.intType(), 4);
+        List<DataBox> keys = new ArrayList<>();
+        List<RecordId> rids = new ArrayList<>();
+        List<RecordId> sortedRids = new ArrayList<>();
+        for (int i = 0; i < 100; ++i) {
+            keys.add(new IntDataBox(i));
+            rids.add(new RecordId(i, (short) i));
+            sortedRids.add(new RecordId(i, (short) i));
+        }
+        Collections.shuffle(keys, new Random(42));
+        Collections.shuffle(rids, new Random(42));
+        for (int i = 0; i < keys.size(); ++i) {
+            System.out.print(keys.get(i) + " ");
+            tree.put(keys.get(i), rids.get(i));
+        }
+        for (int i = 0; i < keys.size(); i++) {
+            Optional<RecordId> recordId = tree.get(keys.get(i));
+            System.out.println(recordId);
+        }
+//        tree.put(new IntDataBox(2), new RecordId(2, (short) 2));
+//        tree.put(new IntDataBox(5), new RecordId(5, (short) 5));
+//        tree.put(new IntDataBox(4), new RecordId(4, (short) 4));
+//        tree.put(new IntDataBox(1), new RecordId(1, (short) 1));
+//        tree.put(new IntDataBox(3), new RecordId(3, (short) 3));
+        LeafNode temp = tree.getLeftmostLeaf();
+        System.out.println(temp.getRightSibling().isPresent());
+//        while (temp.getRightSibling().isPresent()) {
+//            System.out.println(temp.getPage().getPageNum());
+//            temp = temp.getRightSibling().get();
+//        }
+
+        Iterator<RecordId> recordIdIterator = tree.scanAll();
+        while (recordIdIterator.hasNext()) {
+            System.out.println(recordIdIterator.next());
+        }
+    }
+
+    @Test
+    @Category(PublicTests.class)
     public void testRandomPuts() {
         // This test will generate 1000 keys and for trees of degree 2, 3 and 4
         // will scramble the keys and attempt to insert them.
@@ -437,14 +478,25 @@ public class TestBPlusTree {
                 // Insert all the keys.
                 BPlusTree tree = getBPlusTree(Type.intType(), d);
                 for (int i = 0; i < keys.size(); ++i) {
+//                    if (rids.get(i).equals(new RecordId(601, (short) 601)))
+//                        System.out.println(i);
                     tree.put(keys.get(i), rids.get(i));
                 }
+//                System.out.println((Optional.of(rids.get(601))).equals(tree.get(keys.get(601))));
 
                 // Test get.
                 for (int i = 0; i < keys.size(); ++i) {
                     assertEquals(Optional.of(rids.get(i)), tree.get(keys.get(i)));
                 }
 
+//                List<RecordId> recordIds = new ArrayList<>();
+//                Iterator<RecordId> recordIdIterator = tree.scanAll();
+//                while (recordIdIterator.hasNext()) {
+//                    System.out.println(recordIdIterator.next());
+//                }
+//                System.out.println(recordIds);
+
+//                assertEquals(sortedRids, recordIds);
                 // Test scanAll.
                 assertEquals(sortedRids, indexIteratorToList(tree::scanAll));
 

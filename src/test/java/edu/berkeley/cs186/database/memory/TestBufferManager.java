@@ -296,7 +296,7 @@ public class TestBufferManager {
 
         try {
             diskSpaceManager.readPage(frame1.getPageNum(), new byte[DiskSpaceManager.PAGE_SIZE]);
-            fail();
+            fail(); // 如果这行代码被执行，则测试应该失败，因为期望的是抛出异常
         } catch (Exception e) { /* do nothing */ }
         try {
             diskSpaceManager.readPage(frame3.getPageNum(), new byte[DiskSpaceManager.PAGE_SIZE]);

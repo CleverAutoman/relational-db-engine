@@ -88,6 +88,11 @@ public class BNLJOperator extends JoinOperator {
          */
         private void fetchNextLeftBlock() {
             // TODO(proj3_part1): implement
+            if (! leftSourceIterator.hasNext()) return;
+            BacktrackingIterator<Record> blockIterator = getBlockIterator(leftSourceIterator, getLeftSource().getSchema(), numBuffers - 2);
+            this.leftBlockIterator = blockIterator;
+            this.leftRecord = blockIterator.next();
+            leftBlockIterator.markPrev();
         }
 
         /**
@@ -103,6 +108,10 @@ public class BNLJOperator extends JoinOperator {
          */
         private void fetchNextRightPage() {
             // TODO(proj3_part1): implement
+            if (! rightSourceIterator.hasNext()) return;
+            BacktrackingIterator<Record> blockIterator = getBlockIterator(rightSourceIterator, getRightSource().getSchema(), 1);
+            this.rightPageIterator = blockIterator;
+            rightPageIterator.markNext();
         }
 
         /**
@@ -115,7 +124,53 @@ public class BNLJOperator extends JoinOperator {
          */
         private Record fetchNextRecord() {
             // TODO(proj3_part1): implement
-            return null;
+            // if left is null, fetch next left block
+//            if (! leftIteratorHasNext()) return null;
+            if (leftRecord == null) return null;
+            BacktrackingIterator<Record> tempRightPageIterator = rightPageIterator;
+
+            //Case 1: The right page iterator has a value to yield
+            //Case 2: The right page iterator doesn't have a value to yield but the left block iterator does
+            //Case 3: Neither the right page nor left block iterators have values to yield, but there's more right pages
+            //Case 4: Neither right page nor left block iterators have values nor are there more right pages, but there are still left blocks
+            while (true) {
+                while (rightPageIterator.hasNext()) {
+                    Record rightRecord = rightPageIterator.next();
+                    if (compare(this.leftRecord, rightRecord) == 0)
+                        return leftRecord.concat(rightRecord);
+                }
+                if (leftBlockIterator.hasNext()) {
+                    this.leftRecord = leftBlockIterator.next();
+                    rightPageIterator.reset();
+
+                } else if (hasNextRightPage()) {
+                    // left right iterator all empty
+                    // case 3
+                    this.leftBlockIterator.reset();
+                    leftRecord = leftBlockIterator.next();
+//                    fetchNextRightPage();
+                } else if (hasNextLeftBlock()) {
+//                    fetchNextLeftBlock();
+//                    this.leftRecord = leftBlockIterator.next();
+//                    fetchNextRightPage();
+                    this.rightSourceIterator.reset();
+                    fetchNextRightPage();
+                    this.rightPageIterator.reset();
+                } else {
+                    return null;
+                }
+            }
+        }
+
+        private boolean hasNextRightPage() {
+            fetchNextRightPage();
+            if (! rightPageIterator.hasNext()) return false;
+            return true;
+        }
+        private boolean hasNextLeftBlock () {
+            fetchNextLeftBlock();
+            if (! leftBlockIterator.hasNext()) return false;
+            return true;
         }
 
         /**

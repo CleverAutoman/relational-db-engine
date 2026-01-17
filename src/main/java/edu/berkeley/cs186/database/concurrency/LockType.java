@@ -22,8 +22,27 @@ public enum LockType {
             throw new NullPointerException("null lock type");
         }
         // TODO(proj4_part1): implement
+        if (a == IS && b == X) return false;
 
-        return false;
+        if (a == IX && b == S) return false;
+        if (a == IX && b == SIX) return false;
+        if (a == IX && b == X) return false;
+
+        if (a == S && b == IX) return false;
+        if (a == S && b == SIX) return false;
+        if (a == S && b == X) return false;
+
+        if (a == SIX && b == IX) return false;
+        if (a == SIX && b == S) return false;
+        if (a == SIX && b == SIX) return false;
+        if (a == SIX && b == X) return false;
+
+        if (a == X && b == IS) return false;
+        if (a == X && b == IX) return false;
+        if (a == X && b == S) return false;
+        if (a == X && b == SIX) return false;
+        if (a == X && b == X) return false;
+        return true;
     }
 
     /**
@@ -54,7 +73,9 @@ public enum LockType {
             throw new NullPointerException("null lock type");
         }
         // TODO(proj4_part1): implement
-
+        if (childLockType == LockType.NL) return true;
+        if (parentLockType == LockType.IX) return true;
+        if (parentLock(childLockType).equals(parentLockType)) return true;
         return false;
     }
 
@@ -69,8 +90,16 @@ public enum LockType {
             throw new NullPointerException("null lock type");
         }
         // TODO(proj4_part1): implement
+        if (substitute == NL && required != NL) return false;
+        if (substitute != NL && required == NL) return true;
+        if (substitute == IS && required == S) return false;
+        if (substitute == IX && required == S) return false;
+        if (substitute != X && required == X) return false;
+        if (substitute == IS && required == IX) return false;
+        // not sure
+        if (substitute == SIX && (required == S || required == IX || required == IS)) return true;
 
-        return false;
+        return true;
     }
 
     /**

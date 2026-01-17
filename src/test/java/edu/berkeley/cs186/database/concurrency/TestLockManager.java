@@ -590,7 +590,7 @@ public class TestLockManager {
         runner.run(0, () -> lockman.acquire(transactions[0], dbResource, LockType.X));
         runner.run(1, () -> lockman.acquire(transactions[1], dbResource, LockType.X));
         runner.run(2, () -> lockman.acquire(transactions[2], dbResource, LockType.X));
-
+//        System.out.println("success");
         // Lock checks
         assertTrue(holds(lockman, transactions[0], dbResource, LockType.X));
         assertFalse(holds(lockman, transactions[1], dbResource, LockType.X));
@@ -607,6 +607,7 @@ public class TestLockManager {
          *    dbResource should have [X (T2)] in its queue
          */
         runner.run(0, () -> lockman.release(transactions[0], dbResource));
+//        System.out.println("success");
 
         // Lock checks
         assertFalse(holds(lockman, transactions[0], dbResource, LockType.X));

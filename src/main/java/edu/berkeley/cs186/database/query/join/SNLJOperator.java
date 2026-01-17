@@ -1,6 +1,6 @@
 package edu.berkeley.cs186.database.query.join;
 
-import edu.berkeley.cs186.database.TransactionContext;
+import  edu.berkeley.cs186.database.TransactionContext;
 import edu.berkeley.cs186.database.common.iterator.BacktrackingIterator;
 import edu.berkeley.cs186.database.query.JoinOperator;
 import edu.berkeley.cs186.database.query.QueryOperator;

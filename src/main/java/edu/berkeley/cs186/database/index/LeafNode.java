@@ -10,6 +10,7 @@ import edu.berkeley.cs186.database.memory.BufferManager;
 import edu.berkeley.cs186.database.memory.Page;
 import edu.berkeley.cs186.database.table.RecordId;
 
+import javax.swing.text.html.Option;
 import javax.xml.crypto.Data;
 import java.nio.ByteBuffer;
 import java.util.*;
@@ -149,14 +150,7 @@ class LeafNode extends BPlusNode {
     @Override
     public LeafNode get(DataBox key) {
         // TODO(proj2): implement
-        int tempKey = key.getInt();
-
-        for (int i = 0; i < keys.size(); i++) {
-            if (key.equals(keys.get(i))) {
-                return this;
-            }
-        }
-        return null;
+        return this;
     }
 
     // See BPlusNode.getLeftmostLeaf.
@@ -170,48 +164,33 @@ class LeafNode extends BPlusNode {
     @Override
     public Optional<Pair<DataBox, Long>> put(DataBox key, RecordId rid) {
         // TODO(proj2): implement
-        if (keys.contains(key)) throw new BPlusTreeException("Duplicated Key not Allowed");
+        if (keys.contains(key)) throw new BPlusTreeException("No Duplicate Keys");
 
         int order = metadata.getOrder();
-        if (keys.size() < order * 2)
-            return Optional.empty();
-        else{
-            Map<DataBox, RecordId> map = new HashMap<>();
-            for (int i = 0; i < keys.size(); i++) {
-                map.put(keys.get(i), rids.get(i));
-            }
-            map.put(key, rid);
-            Map<DataBox, RecordId> sortedmap = new TreeMap<>((a, b) -> Integer.compare(a.getInt(), b.getInt()));
-            sortedmap.putAll(map);
+        int index = Collections.binarySearch(keys, key);
+        index = -index - 1;
 
-            Optional<Long> newLeafRightSibling = this.rightSibling;
-            List<DataBox> newLeafKeys = new ArrayList<>();
-            List<RecordId> newLeafRids = new ArrayList<>();
+        keys.add(index, key);
+        rids.add(index, rid);
 
-            keys.clear(); rids.clear();
-
-            int index = 0;
-            DataBox splitKey = key;
-            for (Map.Entry<DataBox, RecordId> entry: sortedmap.entrySet()) {
-                if (index == order + 1) {
-                    splitKey = entry.getKey();
-                }
-                if (index > order && index <= 2 * order) {
-                    newLeafKeys.add(entry.getKey());
-                    newLeafRids.add(entry.getValue());
-                } else {
-                    keys.add(entry.getKey());
-                    rids.add(entry.getValue());
-                }
-            }
-            LeafNode leafNode = new LeafNode(metadata, bufferManager, newLeafKeys, newLeafRids, newLeafRightSibling, treeContext);
-            long pageNum = leafNode.getPage().getPageNum();
-            this.rightSibling = Optional.of(pageNum);
-            leafNode.rightSibling = newLeafRightSibling;
-
+        if (keys.size() <= 2 * order) {
             sync();
+            return Optional.empty();
+        } else {
+            List<DataBox> newKeys = keys.subList(order, keys.size());
+            List<RecordId> newRids = rids.subList(order, rids.size());
 
-            return Optional.of(new Pair<DataBox, Long>(splitKey, pageNum));
+            DataBox returnKey = keys.get(order);
+            LeafNode leafNode = new LeafNode(metadata, bufferManager, newKeys, newRids, this.rightSibling, treeContext);
+            leafNode.sync();
+
+            long returnPageNum = leafNode.getPage().getPageNum();
+            this.rightSibling = Optional.of(returnPageNum);
+
+            keys.subList(order, keys.size()).clear();
+            rids.subList(order, rids.size()).clear();
+            sync();
+            return Optional.of(new Pair<DataBox, Long>(returnKey, returnPageNum));
         }
     }
 
@@ -220,28 +199,49 @@ class LeafNode extends BPlusNode {
     public Optional<Pair<DataBox, Long>> bulkLoad(Iterator<Pair<DataBox, RecordId>> data,
             float fillFactor) {
         // TODO(proj2): implement
+//        if (! keys.isEmpty()) throw new BPlusTreeException("the tree is not empty") ;
 
+        int order = metadata.getOrder();
+        int maxSize = (int) (2 * order * fillFactor);
 
-        return Optional.empty();
+        Pair<DataBox, RecordId> pair = data.next();
+        DataBox key = pair.getFirst();
+        RecordId rid = pair.getSecond();
+        int index = 0;
+        for (DataBox i: keys) {
+            if (key.compareTo(i) < 0) break;
+            else index++;
+        }
+        keys.add(index, key);
+        rids.add(index, rid);
+
+        if (keys.size() <= maxSize) {
+            sync();
+            return Optional.empty();
+        }
+        DataBox returnKey = keys.get(maxSize);
+
+        List<DataBox> newKeys = keys.subList(maxSize, keys.size());
+        List<RecordId> newRids = rids.subList(maxSize, rids.size());
+        LeafNode newLeafNode = new LeafNode(metadata, bufferManager, newKeys, newRids, rightSibling, treeContext);
+        long newPageNum = newLeafNode.getPage().getPageNum();
+        this.rightSibling = Optional.of(newPageNum);
+        newLeafNode.sync();
+
+        keys.subList(maxSize, keys.size()).clear();
+        rids.subList(maxSize, rids.size()).clear();
+        sync();
+        return Optional.of(new Pair<DataBox, Long>(returnKey, newPageNum));
     }
 
     // See BPlusNode.remove.
     @Override
     public void remove(DataBox key) {
         // TODO(proj2): implement
-        int tempKey = -1;
-        for (int i = 0; i  < keys.size(); i++) {
-            if (key == keys.get(i)) {
-                tempKey = i;
-                break;
-            }
-        }
-        if (tempKey == -1) throw new BPlusTreeException("No Such Key");
+       int tempKey = Collections.binarySearch(keys, key);
+        if (tempKey < 0) throw new BPlusTreeException("No Such Key");
         rids.remove(tempKey);
         keys.remove(tempKey);
-
-        Collections.sort(rids);
-        Collections.sort(keys);
         sync();
     }
 
@@ -462,7 +462,7 @@ class LeafNode extends BPlusNode {
         assert(nodeType == (byte) 1);
 
         long tempSize = buf.getLong();
-        long rightSiblingTemp = tempSize == -1L? null: tempSize;
+        long rightSiblingTemp = tempSize;
 
         int keySize = buf.getInt();
 
@@ -473,8 +473,7 @@ class LeafNode extends BPlusNode {
             keys.add(DataBox.fromBytes(buf, metadata.getKeySchema()));
             rids.add(RecordId.fromBytes(buf));
         }
-
-        Optional<Long> rightSibling = Optional.ofNullable(rightSiblingTemp);
+        Optional<Long> rightSibling = rightSiblingTemp != -1? Optional.of(rightSiblingTemp): Optional.empty();
 
 
         //   private LeafNode(BPlusTreeMetadata metadata, BufferManager bufferManager, Page page,

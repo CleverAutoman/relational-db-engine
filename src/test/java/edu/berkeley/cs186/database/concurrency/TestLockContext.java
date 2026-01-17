@@ -75,7 +75,10 @@ public class TestLockContext {
     @Category(PublicTests.class)
     public void testSimpleAcquirePass() {
         dbLockContext.acquire(transactions[0], LockType.IS);
+//        System.out.println(lockManager.getLocks(transactions[0]).size());
         tableLockContext.acquire(transactions[0], LockType.S);
+//        System.out.println(lockManager.getLocks(transactions[0]).size());
+
         // both locks should have been acquired
         Assert.assertEquals(Arrays.asList(new Lock(dbLockContext.getResourceName(), LockType.IS, 0L),
                 new Lock(tableLockContext.getResourceName(), LockType.S, 0L)),
@@ -100,6 +103,10 @@ public class TestLockContext {
     public void testSimpleReleasePass() {
         dbLockContext.acquire(transactions[0], LockType.IS);
         tableLockContext.acquire(transactions[0], LockType.S);
+        Assert.assertEquals(Arrays.asList(new Lock(dbLockContext.getResourceName(), LockType.IS, 0L),
+                        new Lock(tableLockContext.getResourceName(), LockType.S, 0L)),
+                lockManager.getLocks(transactions[0]));
+
         tableLockContext.release(transactions[0]);
         // After the sequence above, T0 should only have its lock on the database
         Assert.assertEquals(Collections.singletonList(new Lock(dbLockContext.getResourceName(), LockType.IS,
@@ -172,6 +179,7 @@ public class TestLockContext {
 
         runner.run(0, () -> r0.acquire(t1, LockType.S));
         runner.run(1, () -> r0.acquire(t2, LockType.IS));
+        System.out.println(t2.getTransNum());
         runner.run(1, () -> r1.acquire(t2, LockType.S));
         runner.run(0, () -> r0.release(t1));
 
@@ -288,6 +296,8 @@ public class TestLockContext {
 
         r0.acquire(t1, LockType.IS);
         r0.escalate(t1);
+        assertTrue(TestLockManager.holds(lockManager, t1, r0.getResourceName(), LockType.S));
+
         lockManager.startLog();
         r0.escalate(t1);
         r0.escalate(t1);

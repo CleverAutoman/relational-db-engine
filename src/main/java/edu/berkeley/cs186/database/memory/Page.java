@@ -200,6 +200,7 @@ public class Page {
         /**
          * All read operations through the Page object must run through this method.
          *
+         *
          * @param dst destination byte buffer
          * @param offset offset into page to start reading
          * @param length number of bytes to read
@@ -208,13 +209,14 @@ public class Page {
         @Override
         public Buffer get(byte[] dst, int offset, int length) {
             // TODO(proj4_part2): Update the following line
-            LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
+            LockUtil.ensureSufficientLockHeld(lockContext, LockType.S);
             Page.this.readBytes(this.offset + offset, length, dst);
             return this;
         }
 
         /**
          * All write operations through the Page object must run through this method.
+         *
          *
          * @param src source byte buffer (to copy to the page)
          * @param offset offset into page to start writing
@@ -224,7 +226,7 @@ public class Page {
         @Override
         public Buffer put(byte[] src, int offset, int length) {
             // TODO(proj4_part2): Update the following line
-            LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
+            LockUtil.ensureSufficientLockHeld(lockContext, LockType.X);
             Page.this.writeBytes(this.offset + offset, length, src);
             return this;
         }

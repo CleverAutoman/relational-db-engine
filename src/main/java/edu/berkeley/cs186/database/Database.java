@@ -931,7 +931,32 @@ public class Database implements AutoCloseable {
         public void close() {
             try {
                 // TODO(proj4_part2)
+                // to release all locks the transaction acquired in order
+//                LockContext lockContext = getLockManager().databaseContext();
+//                List<Lock> locks = getLockManager().getLocks(getTransaction());
+//
+//                LockContext precedentContext = lockContext.childContext(tableMetadata.getName());
+//                List<LockContext> lst = new ArrayList<>();
+//                LockContext pointer = precedentContext;
+//
+//                while (pointer != null) {
+//                    lst.add(pointer);
+//                    pointer = pointer.parentContext();
+//                }
+//
+//                Collections.reverse(lst);
+//                System.out.println(lst);
+//                for (LockContext context : lst) {
+//                    context.release(getTransaction());
+//                }
+                List<Lock> lockList = lockManager.getLocks(getTransaction());
+                if (lockList.isEmpty()) return;
+                for (int i = lockList.size()-1;i >= 0;i--) {
+                    LockContext ctxt = LockContext.fromResourceName(lockManager,lockList.get(i).name);
+                    ctxt.release(getTransaction());
+                }
                 return;
+
             } catch (Exception e) {
                 // There's a chance an error message from your release phase
                 // logic can get suppressed. This guarantees that the stack

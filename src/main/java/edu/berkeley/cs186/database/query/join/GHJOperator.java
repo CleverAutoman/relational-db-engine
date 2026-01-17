@@ -71,7 +71,20 @@ public class GHJOperator extends JoinOperator {
         // You may find the implementation in SHJOperator.java to be a good
         // starting point. You can use the static method HashFunc.hashDataBox
         // to get a hash value.
-        return;
+        for (Record record : records) {
+            DataBox columnValue = null;
+            if (left) {
+                columnValue = record.getValue(getLeftColumnIndex());
+            } else {
+                columnValue = record.getValue(getRightColumnIndex());
+            }
+            int hash = HashFunc.hashDataBox(columnValue, pass);
+
+            int partitionNum = hash % partitions.length;
+            if (partitionNum < 0)  // hash might be negative
+                partitionNum += partitions.length;
+            partitions[partitionNum].add(record);
+        }
     }
 
     /**
@@ -112,6 +125,27 @@ public class GHJOperator extends JoinOperator {
         // You shouldn't refer to any variable starting with "left" or "right"
         // here, use the "build" and "probe" variables we set up for you.
         // Check out how SHJOperator implements this function if you feel stuck.
+        Map<DataBox, List<Record>> hashTable = new HashMap<>();
+
+        for (Record buildRecord : buildRecords) {
+            DataBox buildRecordValue = buildRecord.getValue(buildColumnIndex);
+            if (! hashTable.containsKey(buildRecordValue)) {
+                hashTable.put(buildRecordValue, new ArrayList<Record>());
+            }
+            hashTable.get(buildRecordValue).add(buildRecord);
+        }
+
+        for (Record probeRecord : probeRecords) {
+            DataBox probeRecordValue = probeRecord.getValue(probeColumnIndex);
+            if (!hashTable.containsKey(probeRecordValue)) {
+                continue;
+            }
+            List<Record> records = hashTable.get(probeRecordValue);
+            for (Record record : records) {
+                Record joinedRecord = record.concat(probeRecord);
+                this.joinedRecords.add(joinedRecord);
+            }
+        }
     }
 
     /**
@@ -136,8 +170,17 @@ public class GHJOperator extends JoinOperator {
             // TODO(proj3_part1): implement the rest of grace hash join
             // If you meet the conditions to run the build and probe you should
             // do so immediately. Otherwise you should make a recursive call.
+            for (int j = 0; j < rightPartitions.length; j++) {
+                if (leftPartitions[i].getNumPages() <= this.numBuffers - 2 ||
+                        rightPartitions[j].getNumPages() <= this.numBuffers -2) {
+                    buildAndProbe(leftPartitions[i], rightPartitions[j]);
+                } else {
+                    run(leftPartitions[i], rightPartitions[j], pass + 1);
+                }
+            }
         }
     }
+
 
     // Provided Helpers ////////////////////////////////////////////////////////
 
@@ -203,6 +246,16 @@ public class GHJOperator extends JoinOperator {
 
         // TODO(proj3_part1): populate leftRecords and rightRecords such that
         // SHJ breaks when trying to join them but not GHJ
+        int uniqueValues = 48;   // number of partitions that can be handled by GHJ, with each partition receiving one buffer
+        int recordsPerValue = 10; // number of records per unique value to exceed memory in SHJ
+
+        for (int val = 0; val < uniqueValues; val++) {
+            for (int i = 0; i < recordsPerValue; i++) {
+                leftRecords.add(createRecord(val));
+                // Adding matching records on the right table to ensure join possibility
+                rightRecords.add(createRecord(val));
+            }
+        }
         return new Pair<>(leftRecords, rightRecords);
     }
 
@@ -223,7 +276,16 @@ public class GHJOperator extends JoinOperator {
         ArrayList<Record> leftRecords = new ArrayList<>();
         ArrayList<Record> rightRecords = new ArrayList<>();
         // TODO(proj3_part1): populate leftRecords and rightRecords such that GHJ breaks
+        int numRecordsPerValue = 50; // more than the single buffer page can hold
+        int uniqueValues = 10;       // enough to exceed the available memory buffers
 
+        // Populate leftRecords and rightRecords with records that will force multiple passes
+        for (int val = 0; val < uniqueValues; val++) {
+            for (int i = 0; i < numRecordsPerValue; i++) {
+                leftRecords.add(createRecord(val));
+                rightRecords.add(createRecord(val));
+            }
+        }
         return new Pair<>(leftRecords, rightRecords);
     }
 }
