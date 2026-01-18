@@ -1,5 +1,7 @@
 # Relational Database Engine
 
+![Database Icon](images/derpydb-small.jpg)
+
 This project extends a basic database system of CS186 that initially supports only simple, serial transaction execution. 
 On top of this core implementation, all required features have been added, 
 including B+ tree indices, optimized join algorithms, query optimization techniques, 
@@ -45,87 +47,7 @@ The system is composed of the following core components:
 - **Recovery Layer**: Ensures durability and correctness in the presence of failures.
 
 ### Architecture Diagram
-
-```mermaid
-graph TB
-    subgraph "Application Layer"
-        APP[Applications & Queries]
-    end
-    
-    subgraph "Query Execution Layer"
-        QE[Relational Operators]
-        JOIN[Join Algorithms<br/>Nested Loop / Hash / Sort-Merge]
-        OPT[Query Optimizer]
-    end
-    
-    subgraph "Transaction & Concurrency Layer"
-        TX[Transaction Manager]
-        LOCK[Multi-Granularity Locking<br/>DB/Table/Page/Record]
-        ISO[Isolation Control]
-    end
-    
-    subgraph "Index Layer"
-        BTREE[B+Tree Index]
-        SEARCH[Index Search & Range Scan]
-    end
-    
-    subgraph "Storage Layer"
-        PAGE[Page Manager]
-        RECORD[Record Manager]
-        IO[Disk I/O]
-    end
-    
-    subgraph "Recovery Layer"
-        WAL[Write-Ahead Logging]
-        REDO[Redo Operations]
-        UNDO[Undo Operations]
-        CHECKPOINT[Checkpointing]
-    end
-    
-    APP --> OPT
-    OPT --> QE
-    QE --> JOIN
-    
-    QE --> BTREE
-    JOIN --> BTREE
-    BTREE --> SEARCH
-    SEARCH --> PAGE
-    
-    QE --> PAGE
-    JOIN --> PAGE
-    PAGE --> RECORD
-    RECORD --> IO
-    
-    TX --> LOCK
-    TX --> ISO
-    LOCK -.-> PAGE
-    LOCK -.-> RECORD
-    LOCK -.-> BTREE
-    
-    WAL --> REDO
-    WAL --> UNDO
-    WAL --> CHECKPOINT
-    REDO -.-> PAGE
-    UNDO -.-> PAGE
-    CHECKPOINT -.-> PAGE
-    
-    style APP fill:#e1f5ff
-    style QE fill:#fff4e1
-    style JOIN fill:#fff4e1
-    style OPT fill:#fff4e1
-    style TX fill:#ffe1f5
-    style LOCK fill:#ffe1f5
-    style ISO fill:#ffe1f5
-    style BTREE fill:#e1ffe1
-    style SEARCH fill:#e1ffe1
-    style PAGE fill:#f0e1ff
-    style RECORD fill:#f0e1ff
-    style IO fill:#f0e1ff
-    style WAL fill:#ffe8e1
-    style REDO fill:#ffe8e1
-    style UNDO fill:#ffe8e1
-    style CHECKPOINT fill:#ffe8e1
-```
+![Database Arch](images/architecture.png)
 
 ---
 
@@ -146,8 +68,6 @@ graph TB
 - Handles node split and merge operations to maintain tree balance.
 - Integrated with the query execution engine to optimize index-based access paths.
 
-*(You may add implementation details such as page layout, fanout, or persistence strategy here.)*
-
 ---
 
 ## Join Algorithms and Query Optimization
@@ -164,23 +84,59 @@ Each algorithm is selected based on its performance behavior across varying data
 Through benchmarking, **sort-merge join** was chosen for multi-table join workloads, reducing I/O operations from **603 to 8** compared to the
 baseline implementation.
 
+### Query Optimization
+
+The query optimizer uses a **cost-based, dynamic programming approach** to identify
+efficient execution plans.
+
+For single-table access, the optimizer selects the lowest-cost access path by
+comparing **sequential scans** with eligible **index scans**, pushing down all
+single-table selection predicates whenever possible.
+
+For joins, the optimizer incrementally builds **left-deep join plans** using
+explicit join predicates, evaluates available join algorithms, and excludes cartesian
+products.
+
+The final execution plan is selected globally and completed by appending group-by and
+projection operators.
+
+
 ---
 
 ## Concurrency Control
 
-- Designed a **multi-granularity locking protocol** spanning database, table, page, and record levels.
-- Implemented intention locks (**IS, IX**) alongside shared and exclusive locks (**S, X**).
-- Defined lock compatibility matrices and lock escalation/propagation rules.
-- Ensures correctness and isolation for concurrently executing transactions.
+Designed and implemented a **multi-granularity concurrency control subsystem** based on
+strict two-phase locking (2PL) to support safe concurrent execution.
+
+- Implemented **LockManager** with support for lock acquisition, release, promotion, 
+   and atomic acquire-and-release, and built hierarchical 
+  **LockContext** abstractions to enforce multi-granularity locking constraints 
+  across database, table, page, and record levels.
+- Implemented **intent locks (IS, IX)** alongside shared and exclusive locks (**S, X**),
+  including correct handling of **SIX locks**, and lock propagation rules.
+- Integrated **strict two-phase locking** by acquiring locks during query execution and
+  releasing all locks only at transaction completion, ensuring serializability.
+
+Together, these components provide correctness, isolation, and improved concurrency while
+maintaining modular separation between locking, execution, and storage layers.
 
 ---
 
 ## Recovery
 
-- Implemented **ARIES-style write-ahead logging (WAL)**.
-- Supports redo and undo during crash recovery.
-- Designed a checkpointing mechanism to bound recovery time.
-- Correctly restores database state after system failures.
+Implemented a **ARIES-style recovery manager** to ensure atomicity and durability
+across system crashes.
+
+- Reconstructed the **transaction table** and **dirty page table** during the analysis
+  phase by scanning the log from the most recent checkpoint and correctly handling fuzzy
+  checkpoint semantics.
+- Implemented **redo logic with pageLSN validation**, reapplying only necessary operations
+  from the lowest recLSN to avoid redundant I/O.
+- Built a **priority-based undo mechanism** that rolls back incomplete transactions in
+  descending LSN order using **compensation log records (CLRs)**.
+
+These mechanisms restore the database to a consistent state after failures
+while minimizing recovery overhead.
 
 ---
 
