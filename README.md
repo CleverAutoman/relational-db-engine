@@ -1,280 +1,191 @@
-# RookieDB
+# Relational Database Engine
 
-![The official unofficial mascot of the class projects](images/derpydb-small.jpg)
+This project extends a basic database system of CS186 that initially supports only simple, serial transaction execution. 
+On top of this core implementation, all required features have been added, 
+including B+ tree indices, optimized join algorithms, query optimization techniques, 
+multigranularity locking to enable concurrent transactions, and a database recovery mechanism.
 
-This repo contains a bare-bones database implementation, which supports
-executing simple transactions in series. In the assignments of
-this class, you will be adding support for
-B+ tree indices, efficient join algorithms, query optimization, multigranularity
-locking to support concurrent execution of transactions, and database recovery.
+---
+## Table of Contents
+- [Relational Database Engine](#relational-database-engine)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+  - [System Architecture](#system-architecture)
+    - [Architecture Diagram](#architecture-diagram)
+  - [Implemented Features](#implemented-features)
+  - [B+ Tree Index](#b-tree-index)
+  - [Join Algorithms and Query Optimization](#join-algorithms-and-query-optimization)
+  - [Concurrency Control](#concurrency-control)
+  - [Recovery](#recovery)
+  - [Limitations \& Future Work](#limitations--future-work)
 
-Specs for each of the projects will be released throughout the semester at here: [https://cs186.gitbook.io/project/](https://cs186.gitbook.io/project/)
+---
 
 ## Overview
 
-In this document, we explain
+This project is based on a minimal relational database implementation that supports
+executing simple transactions in serial. The system was incrementally extended to support
+key features expected in modern database systems, with a focus on correctness,
+performance, and modular design.
 
-- how to fetch the released code
-- how to fetch any updates to the released code
-- how to setup a local development environment
-- how to run tests using IntelliJ
-- how to submit your code to turn in assignments
-- the general architecture of the released code
+The primary goal of this project is to explore the design and implementation of core
+database internals, including storage indexing, query execution strategies, transaction
+concurrency, and crash recovery.
 
-## Fetching the released code
+---
 
-For each project, we will provide a GitHub Classroom link. Follow the
-link to create a GitHub repository with the starter code for the project you are
-working on. Use `git clone` to get a local copy of the newly
-created repository.
+## System Architecture
 
-## Fetching any updates to the released code
+The system is composed of the following core components:
 
-In a perfect world, we would never have to update the released code because
-it would be perfectly free of bugs. Unfortunately, bugs do surface from time to
-time, and you may have to fetch updates. We will provide further instructions
-via a post on Piazza whenever fetching updates is necessary.
+- **Storage Layer**: Manages pages, records, and disk I/O.
+- **Index Layer**: Provides clustered B+Tree indices for efficient record access.
+- **Query Execution Layer**: Implements relational operators and join algorithms.
+- **Transaction & Concurrency Layer**: Handles locking and transaction isolation.
+- **Recovery Layer**: Ensures durability and correctness in the presence of failures.
 
-## Setting up your local development environment
+### Architecture Diagram
 
-You are free to use any text editor or IDE to complete the assignments, but **we
-will build and test your code in a docker container with Maven**.
-
-We recommend setting up a local development environment by installing Java
-8 locally (the version our Docker container runs) and using an IDE such as
-IntelliJ.
-
-[Java 8 downloads](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html)
-
-If you have another version of Java installed, it's probably fine to use it, as
-long as you do not use any features not in Java 8. You should run tests
-somewhat frequently inside the container to make sure that your code works with
-our setup.
-
-To import the project into IntelliJ, make sure that you import as a Maven
-project (select the pom.xml file when importing). Make sure that you can compile
-your code and run tests (it's ok if there are a lot of failed tests - you
-haven't begun implementing anything yet!). You should also make sure that you
-can run the debugger and step through code.
-
-## Running tests in IntelliJ
-
-If you are using IntelliJ, and wish to run the tests for a given assignment
-follow the instructions in the following document:
-
-[IntelliJ setup](intellij-test-setup.md)
-
-## Submitting assignments
-
-To submit a project, navigate to the cloned repo, and use
-`git push` to push all of your changes to the remote GitHub repository created
-by GitHub Classroom. Then, go to Gradescope class and click on the
-project to which you want to submit your code. Select GitHub for the submission
-method (if it hasn't been selected already), and select the repository and branch
-with the code you want to upload and submit. If you have not done this before,
-then you will have to link your GitHub account to Gradescope using the "Connect
-to GitHub" button. If you are unable to find the appropriate repository, then you
-might need to go to https://github.com/settings/applications, click Gradescope,
-and grant access to the `berkeley-cs186-student` organization.
-
-Note that you are only allowed to modify certain files for each assignment, and
-changes to other files you are not allowed to modify will be discarded when we
-run tests.
-
-## The code
-
-As you will be working with this codebase for the rest of the semester, it is a good idea to get familiar with it. The code is located in the `src/main/java/edu/berkeley/cs186/database` directory, while the tests are located in the `src/test/java/edu/berkeley/cs186/database directory`. The following is a brief overview of each of the major sections of the codebase.
-
-### cli
-
-The cli directory contains all the logic for the database's command line interface. Running the main method of CommandLineInterface.java will create an instance of the database and create a simple text interface that you can send and review the results of queries in. **The inner workings of this section are beyond the scope of the class** (although you're free to look around), you'll just need to know how to run the Command Line Interface.
-
-#### cli/parser
-
-The subdirectory cli/parser contains a lot of scary looking code! Don't be intimidated, this is all generated automatically from the file RookieParser.jjt in the root directory of the repo. The code here handles the logic to convert from user inputted queries (strings) into a tree of nodes representing the query (parse tree).
-
-#### cli/visitor
-
-The subdirectory cli/visitor contains classes that help traverse the trees created from the parser and create objects that the database can work with directly.
-
-### common
-
-The `common` directory contains bits of useful code and general interfaces that
-are not limited to any one part of the codebase.
-
-### concurrency
-
-The `concurrency` directory contains a skeleton for adding multigranularity
-locking to the database. You will be implementing this in Project 4.
-
-### databox
-
-Our database has, like most DBMS's, a type system distinct from that of the
-programming language used to implement the DBMS. (Our DBMS doesn't quite provide
-SQL types either, but it's modeled on a simplified version of SQL types).
-
-The `databox` directory contains classes which represents values stored in
-a database, as well as their types. The various `DataBox` classes represent
-values of certain types, whereas the `Type` class represents types used in the
-database.
-
-An example:
-```java
-DataBox x = new IntDataBox(42); // The integer value '42'.
-Type t = Type.intType();        // The type 'int'.
-Type xsType = x.type();         // Get x's type, which is Type.intType().
-int y = x.getInt();             // Get x's value: 42.
-String s = x.getString();       // An exception is thrown, since x is not a string.
+```mermaid
+graph TB
+    subgraph "Application Layer"
+        APP[Applications & Queries]
+    end
+    
+    subgraph "Query Execution Layer"
+        QE[Relational Operators]
+        JOIN[Join Algorithms<br/>Nested Loop / Hash / Sort-Merge]
+        OPT[Query Optimizer]
+    end
+    
+    subgraph "Transaction & Concurrency Layer"
+        TX[Transaction Manager]
+        LOCK[Multi-Granularity Locking<br/>DB/Table/Page/Record]
+        ISO[Isolation Control]
+    end
+    
+    subgraph "Index Layer"
+        BTREE[B+Tree Index]
+        SEARCH[Index Search & Range Scan]
+    end
+    
+    subgraph "Storage Layer"
+        PAGE[Page Manager]
+        RECORD[Record Manager]
+        IO[Disk I/O]
+    end
+    
+    subgraph "Recovery Layer"
+        WAL[Write-Ahead Logging]
+        REDO[Redo Operations]
+        UNDO[Undo Operations]
+        CHECKPOINT[Checkpointing]
+    end
+    
+    APP --> OPT
+    OPT --> QE
+    QE --> JOIN
+    
+    QE --> BTREE
+    JOIN --> BTREE
+    BTREE --> SEARCH
+    SEARCH --> PAGE
+    
+    QE --> PAGE
+    JOIN --> PAGE
+    PAGE --> RECORD
+    RECORD --> IO
+    
+    TX --> LOCK
+    TX --> ISO
+    LOCK -.-> PAGE
+    LOCK -.-> RECORD
+    LOCK -.-> BTREE
+    
+    WAL --> REDO
+    WAL --> UNDO
+    WAL --> CHECKPOINT
+    REDO -.-> PAGE
+    UNDO -.-> PAGE
+    CHECKPOINT -.-> PAGE
+    
+    style APP fill:#e1f5ff
+    style QE fill:#fff4e1
+    style JOIN fill:#fff4e1
+    style OPT fill:#fff4e1
+    style TX fill:#ffe1f5
+    style LOCK fill:#ffe1f5
+    style ISO fill:#ffe1f5
+    style BTREE fill:#e1ffe1
+    style SEARCH fill:#e1ffe1
+    style PAGE fill:#f0e1ff
+    style RECORD fill:#f0e1ff
+    style IO fill:#f0e1ff
+    style WAL fill:#ffe8e1
+    style REDO fill:#ffe8e1
+    style UNDO fill:#ffe8e1
+    style CHECKPOINT fill:#ffe8e1
 ```
 
-### index
+---
 
-The `index` directory contains a skeleton for implementing B+ tree indices. You
-will be implementing this in Project 2.
+## Implemented Features
 
-### memory
+- Clustered B+Tree indexing
+- Multiple join algorithms with cost-based selection
+- Query optimization for multi-table joins
+- Multi-granularity locking for concurrent transactions
+- ARIES-style logging and crash recovery
 
-The `memory` directory contains classes for managing the loading of data
-into and out of memory (in other words, buffer management).
+---
 
-The `BufferFrame` class represents a single buffer frame (page in the buffer
-pool) and supports pinning/unpinning and reading/writing to the buffer frame.
-All reads and writes require the frame be pinned (which is often done via the
-`requireValidFrame` method, which reloads data from disk if necessary, and then
-returns a pinned frame for the page).
+## B+ Tree Index
 
-The `BufferManager` interface is the public interface for the buffer manager of
-our DBMS.
+- Implemented a **clustered B+Tree index** to support efficient point lookups and range scans.
+- Supports core index operations including search, insert, and delete.
+- Handles node split and merge operations to maintain tree balance.
+- Integrated with the query execution engine to optimize index-based access paths.
 
-The `BufferManagerImpl` class implements a buffer manager using
-a write-back buffer cache with configurable eviction policy. It is responsible
-for fetching pages (via the disk space manager) into buffer frames, and returns
-Page objects to allow for manipulation of data in memory.
+*(You may add implementation details such as page layout, fanout, or persistence strategy here.)*
 
-The `Page` class represents a single page. When data in the page is accessed or
-modified, it delegates reads/writes to the underlying buffer frame containing
-the page.
+---
 
-The `EvictionPolicy` interface defines a few methods that determine how the
-buffer manager evicts pages from memory when necessary. Implementations of these
-include the `LRUEvictionPolicy` (for LRU) and `ClockEvictionPolicy` (for clock).
+## Join Algorithms and Query Optimization
 
-### io
+The following join algorithms are implemented and evaluated:
 
-The `io` directory contains classes for managing data on-disk (in other words,
-disk space management).
+- **Nested Loop Join**
+- **Hash Join**
+- **Sort-Merge Join**
 
-The `DiskSpaceManager` interface is the public interface for the disk space
-manager of our DBMS.
+Through the design and implementation of these algorithms, 
+I gained a deep understanding of their characteristics and how they affect performance under different workloads.
+Each algorithm is selected based on its performance behavior across varying data sizes and join predicates. 
+Through benchmarking, **sort-merge join** was chosen for multi-table join workloads, reducing I/O operations from **603 to 8** compared to the
+baseline implementation.
 
-The `DiskSpaceMangerImpl` class is the implementation of the disk space
-manager, which maps groups of pages (partitions) to OS-level files, assigns
-each page a virtual page number, and loads/writes these pages from/to disk.
+---
 
-### query
+## Concurrency Control
 
-The `query` directory contains classes for managing and manipulating queries.
+- Designed a **multi-granularity locking protocol** spanning database, table, page, and record levels.
+- Implemented intention locks (**IS, IX**) alongside shared and exclusive locks (**S, X**).
+- Defined lock compatibility matrices and lock escalation/propagation rules.
+- Ensures correctness and isolation for concurrently executing transactions.
 
-The various operator classes are query operators (pieces of a query), some of
-which you will be implementing in Project 3.
+---
 
-The `QueryPlan` class represents a plan for executing a query (which we will be
-covering in more detail later in the semester). It currently executes the query
-as given (runs things in logical order, and performs joins in the order given),
-but you will be implementing
-a query optimizer in Project 3 to run the query in a more efficient manner.
+## Recovery
 
-### recovery
+- Implemented **ARIES-style write-ahead logging (WAL)**.
+- Supports redo and undo during crash recovery.
+- Designed a checkpointing mechanism to bound recovery time.
+- Correctly restores database state after system failures.
 
-The `recovery` directory contains a skeleton for implementing database recovery
-a la ARIES. You will be implementing this in Project 5.
+---
 
-### table
+## Limitations & Future Work
 
-The `table` directory contains classes representing entire tables and records.
-
-The `Table` class is, as the name suggests, a table in our database. See the
-comments at the top of this class for information on how table data is layed out
-on pages.
-
-The `Schema` class represents the _schema_ of a table (a list of column names
-and their types).
-
-The `Record` class represents a record of a table (a single row). Records are
-made up of multiple DataBoxes (one for each column of the table it belongs to).
-
-The `RecordId` class identifies a single record in a table.
-
-
-The `PageDirectory` class is an implementation of a heap file that uses a page directory.
-
-#### table/stats
-
-The `table/stats` directory contains classes for keeping track of statistics of
-a table. These are used to compare the costs of different query plans, when you
-implement query optimization in Project 4.
-
-### Transaction.java
-
-The `Transaction` interface is the _public_ interface of a transaction - it
-contains methods that users of the database use to query and manipulate data.
-
-This interface is partially implemented by the `AbstractTransaction` abstract
-class, and fully implemented in the `Database.Transaction` inner class.
-
-### TransactionContext.java
-
-The `TransactionContext` interface is the _internal_ interface of a transaction -
-it contains methods tied to the current transaction that internal methods
-(such as a table record fetch) may utilize.
-
-The current running transaction's transaction context is set at the beginning
-of a `Database.Transaction` call (and available through the static
-`getCurrentTransaction` method) and unset at the end of the call.
-
-This interface is partially implemented by the `AbstractTransactionContext` abstract
-class, and fully implemented in the `Database.TransactionContext` inner class.
-
-### Database.java
-
-The `Database` class represents the entire database. It is the public interface
-of our database - users of our database can use it like a Java library.
-
-All work is done in transactions, so to use the database, a user would start
-a transaction with `Database#beginTransaction`, then call some of
-`Transaction`'s numerous methods to perform selects, inserts, and updates.
-
-For example:
-```java
-Database db = new Database("database-dir");
-
-try (Transaction t1 = db.beginTransaction()) {
-    Schema s = new Schema()
-            .add("id", Type.intType())
-            .add("firstName", Type.stringType(10))
-            .add("lastName", Type.stringType(10));
-
-    t1.createTable(s, "table1");
-
-    t1.insert("table1", 1, "Jane", "Doe");
-    t1.insert("table1", 2, "John", "Doe");
-
-    t1.commit();
-}
-
-try (Transaction t2 = db.beginTransaction()) {
-    // .query("table1") is how you run "SELECT * FROM table1"
-    Iterator<Record> iter = t2.query("table1").execute();
-
-    System.out.println(iter.next()); // prints [1, John, Doe]
-    System.out.println(iter.next()); // prints [2, Jane, Doe]
-
-    t2.commit();
-}
-
-db.close();
-```
-
-More complex queries can be found in
-[`src/test/java/edu/berkeley/cs186/database/TestDatabase.java`](src/test/java/edu/berkeley/cs186/database/TestDatabase.java).
-
+- Cost-based query optimization can be further improved. 
+- Support for additional isolation levels (e.g., MVCC). 
+- Enhanced recovery performance under high-concurrency workloads.
