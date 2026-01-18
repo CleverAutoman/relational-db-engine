@@ -1,4 +1,4 @@
-# Relational Database Engine
+# Mini Relational Database Engine
 
 ![Database Icon](images/derpydb-small.jpg)
 
