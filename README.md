@@ -1,4 +1,4 @@
-# Relational Database Engine
+# Mini Relational Database Engine
 
 This project extends a basic database system of CS186 that initially supports only simple, serial transaction execution. 
 On top of this core implementation, all required features have been added, 
